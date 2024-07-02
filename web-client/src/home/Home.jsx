@@ -1,6 +1,7 @@
 import { useAccount, useWriteContract } from "wagmi";
+import toast from 'react-hot-toast';
 import contract from '../../constants.json';
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs/'
 
@@ -47,6 +48,9 @@ export const Home = () => {
   };
 
   const generateNFT = async () => {
+    if(isDisconnected) {
+      return;
+    }
     try {
       const ipfs = await generateIPFS();
       await writeContract({
@@ -58,6 +62,7 @@ export const Home = () => {
           `${PINATA_GATEWAY}${ipfs}`
         ]
       })
+      toast('NFT generated successfully');
     } catch (e) {
       console.error(e);
     }

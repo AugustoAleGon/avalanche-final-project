@@ -1,4 +1,5 @@
 import {Suspense} from 'react';
+import { Toaster } from 'react-hot-toast';
 import {BrowserRouter} from 'react-router-dom';
 import {Router} from './general/Router.jsx';
 import {Loading} from './components/Loading.jsx';
@@ -27,6 +28,7 @@ export const App = () => (
         <NavTabs />
         <Router/>
       </div>
+      <Toaster />
     </Suspense>
   </BrowserRouter>
 );
