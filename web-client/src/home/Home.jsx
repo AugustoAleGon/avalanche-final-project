@@ -1,37 +1,86 @@
-import { useReadContract } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
 import contract from '../../constants.json';
 import { useEffect, useState } from "react";
 
-export const Home = () => {
-  const [message, setMessage] = useState("");
-  const result = useReadContract({
-    abi: contract.abi,
-    address: contract.address,
-    functionName: 'getMessage',
-  })
+const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs/'
 
-  useEffect(() => {
-    if(result.data) {
-      setMessage(result.data);
+export const Home = () => {
+  const [selectedFile, setSelectedFile] = useState();
+  const {address, isDisconnected} = useAccount();
+  const {writeContract} = useWriteContract();
+
+  const changeHandler = (event) => {
+    setSelectedFile(event.target.files);
+  };
+
+  const generateIPFS = async () => {
+    try {
+      const formData = new FormData();
+      Array.from(selectedFile).forEach((file) => {
+        formData.append("file", file);
+      });
+      const metadata = JSON.stringify({
+        name: "File name",
+      });
+      formData.append("pinataMetadata", metadata);
+
+      const options = JSON.stringify({
+        cidVersion: 0,
+      });
+      formData.append("pinataOptions", options);
+
+      const res = await fetch(
+        "https://api.pinata.cloud/pinning/pinFileToIPFS",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_PINATA_JWT}`,
+          },
+          body: formData,
+        }
+      );
+      const resData = await res.json();
+      return resData.IpfsHash;
+    } catch (error) {
+      throw new Error(error.message);
     }
-  }, [result]);
+  };
+
+  const generateNFT = async () => {
+    try {
+      const ipfs = await generateIPFS();
+      await writeContract({
+        address: contract.address,
+        abi: contract.abi,
+        functionName: 'safeMint',
+        args: [
+          address,
+          `${PINATA_GATEWAY}${ipfs}`
+        ]
+      })
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   return (
     <div className="flex w-full flex-col">
-      <div className="flex w-full flex-col items-center justify-between gap-6 text-center lg:flex-row lg:text-left">
-        <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 md:text-4xl">
-          <span className="block">NFT Builder</span>
-        </h2>
-        <w3m-button />
+      <div>
+        <p className="text-lg">
+          Create your first NFT
+        </p>
       </div>
       <div className="mt-10">
         <div className="flex flex-col">
-          <label>Image Url:</label>
           <div className="mt-2">
-            <input type="text" className="text-gray-700 w-1/2 bg-gray-50" />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={changeHandler}
+            />
           </div>
           <div>
-            <button className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Generate NFT</button>
+            <button disabled={!selectedFile} onClick={generateNFT} className="mt-4 bg-blue-500 disabled:bg-blue-200 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Generate NFT</button>
           </div>
         </div>
       </div>
